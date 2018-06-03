@@ -1,0 +1,5 @@
+[config]
+artists = Artist1,Artist2
+token = TelegramToken
+chats =
+interval = 60
