@@ -2,6 +2,7 @@ import configparser
 import json
 import sched
 import time
+
 import requests
 from datetime import datetime
 from telegram.ext import Updater, CommandHandler
@@ -10,6 +11,7 @@ interval = 0
 updater = None
 chats = []
 artists = []
+notified = []
 s = sched.scheduler(time.time, time.sleep)
 
 
@@ -26,6 +28,18 @@ class Song:
     def __str__(self):
         return "Song(status=%s, id=%s, song_name=%s, artist=%s, time=%s, length=%s, cover=%s)" % \
                (self.status, self.id, self.song_name, self.artist, self.time, self.length, self.cover)
+
+    def __eq__(self, other):
+        return self.status == other.status and \
+               self.id == other.id and \
+               self.song_name == other.song_name and \
+               self.artist == other.artist and \
+               self.time == other.time and \
+               self.length == other.length and \
+               self.cover == other.cover
+
+    def __hash__(self):
+        return hash(self.id)
 
     def __repr__(self):
         return self.__str__()
@@ -50,15 +64,21 @@ def from_artists(artists, songs):
 
 
 def check_oe3():
+    global notified
     songs = get_songs()
     upcoming = from_artists(artists, songs)
-    print("Found: " + str(upcoming) + "; " + str(songs))
-    if upcoming:
+    to_notify = list(set(upcoming) - set(notified))
+    notified = notified + to_notify
+    print("Found: " + str(upcoming) + "; Notifying: " + str(to_notify) + "; " + str(songs))
+    if to_notify:
         msg = "Upcoming songs:"
-        for s in upcoming:
+        for s in to_notify:
             msg += "\n" + s.song_name + " by " + s.artist + ": " + s.time.strftime("%H:%M:%S %d.%m.%Y")
         for chat in chats:
-            updater.bot.send_message(chat, msg)
+            try:
+                updater.bot.send_message(chat, msg)
+            except:
+                pass
 
 
 def bot_start(bot, update):
